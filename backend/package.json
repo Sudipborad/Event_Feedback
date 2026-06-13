@@ -1,0 +1,16 @@
+{
+  "name": "feedback-backend",
+  "version": "1.0.0",
+  "description": "Fastify backend for Event Feedback Management System",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "fastify": "^4.26.2",
+    "@fastify/cors": "^9.0.1",
+    "dotenv": "^16.4.5"
+  }
+}
