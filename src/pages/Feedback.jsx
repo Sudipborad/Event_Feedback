@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Send, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { sampleEvents } from './Events';
+import { submitFeedback, getFeedbacks } from '../services/api';
 
 export default function Feedback() {
   const [searchParams] = useSearchParams();
@@ -15,10 +16,35 @@ export default function Feedback() {
     message: '',
   });
 
+  // State variables for feedback listing
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
+
   // State variables for validation and submission
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Load feedbacks list from backend on mount
+  useEffect(() => {
+    loadFeedbacksList();
+  }, []);
+
+  const loadFeedbacksList = async () => {
+    try {
+      setLoading(true);
+      setFetchError(null);
+      const data = await getFeedbacks();
+      setFeedbacks(data);
+    } catch (err) {
+      console.error('Failed to load feedbacks:', err);
+      setFetchError('Failed to load recent feedback submissions. Please check if the backend server is running.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Set initial event from URL parameters if available
   useEffect(() => {
@@ -61,8 +87,9 @@ export default function Feedback() {
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError(null);
     const validationErrors = validateForm();
     
     if (Object.keys(validationErrors).length > 0) {
@@ -72,11 +99,18 @@ export default function Feedback() {
 
     setSubmitting(true);
     
-    // Simulate API request delay
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      // Connect Frontend with Backend API using Axios
+      await submitFeedback(formData);
       setIsSubmitted(true);
-    }, 800);
+      // Reload feedbacks list to include new item
+      loadFeedbacksList();
+    } catch (err) {
+      console.error('Submission failed:', err);
+      setSubmitError('Failed to submit feedback. Please ensure the backend server is running and try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Reset form to submit again
@@ -89,6 +123,7 @@ export default function Feedback() {
     });
     setIsSubmitted(false);
     setErrors({});
+    setSubmitError(null);
   };
 
   if (isSubmitted) {
@@ -100,7 +135,7 @@ export default function Feedback() {
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Feedback Submitted!</h2>
           <p className="text-slate-400 text-sm mb-6">
-            Thank you, <span className="text-white font-medium">{formData.name}</span>. Your response for <span className="text-violet-400 font-medium">{formData.eventName}</span> has been captured successfully.
+            Thank you, <span className="text-white font-medium">{formData.name}</span>. Your response for <span className="text-violet-400 font-medium">{formData.eventName}</span> has been saved to the database.
           </p>
 
           <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 text-left space-y-2 mb-8 text-sm">
@@ -138,7 +173,7 @@ export default function Feedback() {
   }
 
   return (
-    <div className="bg-slate-950 text-slate-100 min-h-[calc(100vh-4rem)] py-12 px-6 sm:px-8 lg:px-12 flex flex-col justify-center">
+    <div className="bg-slate-950 text-slate-100 min-h-[calc(100vh-4rem)] py-12 px-6 sm:px-8 lg:px-12">
       <div className="max-w-2xl mx-auto w-full">
         {/* Header */}
         <div className="mb-10 text-center">
@@ -155,6 +190,13 @@ export default function Feedback() {
 
         {/* Form Card */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-10 shadow-lg backdrop-blur-sm">
+          {submitError && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl flex items-center space-x-2 text-sm mb-6">
+              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Name */}
             <div>
@@ -217,7 +259,7 @@ export default function Feedback() {
                 className={`w-full bg-slate-950/60 border ${
                   errors.eventName ? 'border-red-500/80 focus:ring-red-500/20' : 'border-slate-800 focus:border-violet-500 focus:ring-violet-500/20'
                 } rounded-xl px-4 py-3 focus:outline-none focus:ring-4 transition-all duration-200 ${
-                  !formData.eventName ? 'text-slate-505 text-slate-500' : 'text-slate-100'
+                  !formData.eventName ? 'text-slate-500' : 'text-slate-100'
                 }`}
               >
                 <option value="" disabled>Select an event</option>
@@ -270,6 +312,53 @@ export default function Feedback() {
               <span>{submitting ? 'Submitting...' : 'Submit Feedback'}</span>
             </button>
           </form>
+        </div>
+
+        {/* Feedback List Section */}
+        <div className="mt-16 border-t border-slate-800/80 pt-12">
+          <h2 className="text-2xl font-bold text-white mb-6 tracking-tight text-center md:text-left">
+            Recent Feedback Submissions
+          </h2>
+
+          {fetchError && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl flex items-center space-x-2 text-sm">
+              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+              <span>{fetchError}</span>
+            </div>
+          )}
+
+          {loading ? (
+            <p className="text-center text-slate-500 text-sm py-8">Loading submitted feedback items...</p>
+          ) : feedbacks.length === 0 ? (
+            <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-8 text-center text-slate-400 text-sm">
+              No feedback submissions recorded yet. Be the first to share your thoughts!
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {feedbacks.map((item) => (
+                <div
+                  key={item._id}
+                  className="bg-slate-900 border border-slate-800 p-6 rounded-xl hover:border-slate-700/80 transition-colors"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                    <div>
+                      <span className="font-bold text-white text-base block sm:inline mr-2">{item.name}</span>
+                      <span className="text-slate-500 text-xs sm:text-sm">({item.email})</span>
+                    </div>
+                    <span className="inline-block self-start sm:self-auto bg-violet-600/10 border border-violet-500/20 text-violet-300 text-xs px-2.5 py-1 rounded-full font-medium">
+                      {item.eventName}
+                    </span>
+                  </div>
+                  <p className="text-slate-300 text-sm italic mb-2 leading-relaxed">
+                    "{item.message}"
+                  </p>
+                  <div className="text-slate-550 text-xs text-slate-500">
+                    Submitted on: {new Date(item.createdAt).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
