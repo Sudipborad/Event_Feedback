@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { buildApp } from './src/app.js';
+import { connectDB } from './src/config/db.js';
 
 // Initialize environment configuration
 dotenv.config();
@@ -14,6 +15,9 @@ const HOST = process.env.HOST || '127.0.0.1';
  */
 const start = async () => {
   try {
+    // Establish connection to MongoDB
+    await connectDB();
+
     await app.listen({ port: PORT, host: HOST });
     app.log.info(`Server listening on http://${HOST}:${PORT}`);
   } catch (err) {
