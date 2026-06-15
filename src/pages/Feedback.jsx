@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Send, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Send, CheckCircle2, AlertTriangle, HelpCircle } from 'lucide-react';
 import { sampleEvents } from './Events';
 import { submitFeedback, getFeedbacks } from '../services/api';
+import SkeletonCard from '../components/Skeleton';
+import Toast from '../components/Toast';
 
 export default function Feedback() {
   const [searchParams] = useSearchParams();
@@ -27,6 +29,9 @@ export default function Feedback() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // State variable for Toast notification
+  const [toast, setToast] = useState(null);
+
   // Load feedbacks list from backend on mount
   useEffect(() => {
     loadFeedbacksList();
@@ -41,6 +46,7 @@ export default function Feedback() {
     } catch (err) {
       console.error('Failed to load feedbacks:', err);
       setFetchError('Failed to load recent feedback submissions. Please check if the backend server is running.');
+      setToast({ message: 'Error fetching recent feedback from database.', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -62,6 +68,14 @@ export default function Feedback() {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
+  };
+
+  // Get initials for profile badge icon
+  const getInitials = (name) => {
+    if (!name) return '??';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
   // Validate form data
@@ -94,6 +108,7 @@ export default function Feedback() {
     
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      setToast({ message: 'Please fix form validation errors.', type: 'error' });
       return;
     }
 
@@ -103,11 +118,13 @@ export default function Feedback() {
       // Connect Frontend with Backend API using Axios
       await submitFeedback(formData);
       setIsSubmitted(true);
+      setToast({ message: 'Feedback successfully submitted to database!', type: 'success' });
       // Reload feedbacks list to include new item
       loadFeedbacksList();
     } catch (err) {
       console.error('Submission failed:', err);
       setSubmitError('Failed to submit feedback. Please ensure the backend server is running and try again.');
+      setToast({ message: 'Database submission failed.', type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -129,6 +146,13 @@ export default function Feedback() {
   if (isSubmitted) {
     return (
       <div className="bg-slate-950 text-slate-100 min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-6 sm:px-8">
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
         <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-xl shadow-violet-500/5">
           <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-6">
             <CheckCircle2 className="h-10 w-10" />
@@ -174,6 +198,15 @@ export default function Feedback() {
 
   return (
     <div className="bg-slate-950 text-slate-100 min-h-[calc(100vh-4rem)] py-12 px-6 sm:px-8 lg:px-12">
+      {/* Toast Alert */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="max-w-2xl mx-auto w-full">
         {/* Header */}
         <div className="mb-10 text-center">
@@ -212,7 +245,7 @@ export default function Feedback() {
                 placeholder="Enter your name"
                 className={`w-full bg-slate-950/60 border ${
                   errors.name ? 'border-red-500/80 focus:ring-red-500/20' : 'border-slate-800 focus:border-violet-500 focus:ring-violet-500/20'
-                } rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-200`}
+                } rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-205 transition-colors`}
               />
               {errors.name && (
                 <p className="mt-1.5 text-xs text-red-400 flex items-center space-x-1">
@@ -236,7 +269,7 @@ export default function Feedback() {
                 placeholder="you@example.com"
                 className={`w-full bg-slate-950/60 border ${
                   errors.email ? 'border-red-500/80 focus:ring-red-500/20' : 'border-slate-800 focus:border-violet-500 focus:ring-violet-500/20'
-                } rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-200`}
+                } rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-205 transition-colors`}
               />
               {errors.email && (
                 <p className="mt-1.5 text-xs text-red-400 flex items-center space-x-1">
@@ -258,7 +291,7 @@ export default function Feedback() {
                 onChange={handleChange}
                 className={`w-full bg-slate-950/60 border ${
                   errors.eventName ? 'border-red-500/80 focus:ring-red-500/20' : 'border-slate-800 focus:border-violet-500 focus:ring-violet-500/20'
-                } rounded-xl px-4 py-3 focus:outline-none focus:ring-4 transition-all duration-200 ${
+                } rounded-xl px-4 py-3 focus:outline-none focus:ring-4 transition-all duration-205 transition-colors ${
                   !formData.eventName ? 'text-slate-500' : 'text-slate-100'
                 }`}
               >
@@ -292,7 +325,7 @@ export default function Feedback() {
                 placeholder="What did you like? What can we improve?"
                 className={`w-full bg-slate-950/60 border ${
                   errors.message ? 'border-red-500/80 focus:ring-red-500/20' : 'border-slate-800 focus:border-violet-500 focus:ring-violet-500/20'
-                } rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-200 resize-none`}
+                } rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-205 transition-colors resize-none`}
               />
               {errors.message && (
                 <p className="mt-1.5 text-xs text-red-400 flex items-center space-x-1">
@@ -328,31 +361,46 @@ export default function Feedback() {
           )}
 
           {loading ? (
-            <p className="text-center text-slate-500 text-sm py-8">Loading submitted feedback items...</p>
+            <div className="space-y-4">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
           ) : feedbacks.length === 0 ? (
-            <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-8 text-center text-slate-400 text-sm">
-              No feedback submissions recorded yet. Be the first to share your thoughts!
+            <div className="bg-slate-900/40 border border-slate-850 rounded-2xl p-10 text-center text-slate-400 text-sm flex flex-col items-center space-y-3">
+              <HelpCircle className="h-10 w-10 text-slate-500 animate-pulse" />
+              <span className="font-medium">No feedback submissions recorded yet.</span>
+              <span className="text-xs text-slate-500">Be the first to share your thoughts using the form above!</span>
             </div>
           ) : (
             <div className="space-y-4">
               {feedbacks.map((item) => (
                 <div
                   key={item._id}
-                  className="bg-slate-900 border border-slate-800 p-6 rounded-xl hover:border-slate-700/80 transition-colors"
+                  className="bg-slate-900/40 border border-slate-800 p-6 rounded-xl hover:border-violet-500/30 hover:shadow-lg hover:shadow-violet-500/2 transition-all duration-300"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                    <div>
-                      <span className="font-bold text-white text-base block sm:inline mr-2">{item.name}</span>
-                      <span className="text-slate-500 text-xs sm:text-sm">({item.email})</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                    <div className="flex items-center space-x-3">
+                      {/* Avatar Badge Icon with Initials */}
+                      <div className="h-10 w-10 rounded-full bg-violet-650/10 border border-violet-500/30 text-violet-300 flex items-center justify-center font-bold text-sm select-none">
+                        {getInitials(item.name)}
+                      </div>
+                      <div>
+                        <span className="font-bold text-white text-base block">{item.name}</span>
+                        <span className="text-slate-500 text-xs">{item.email}</span>
+                      </div>
                     </div>
-                    <span className="inline-block self-start sm:self-auto bg-violet-600/10 border border-violet-500/20 text-violet-300 text-xs px-2.5 py-1 rounded-full font-medium">
+                    {/* Event Tag */}
+                    <span className="inline-block self-start sm:self-auto bg-violet-600/15 border border-violet-500/30 text-violet-300 text-xs px-2.5 py-1 rounded-full font-medium shadow-sm">
                       {item.eventName}
                     </span>
                   </div>
-                  <p className="text-slate-300 text-sm italic mb-2 leading-relaxed">
+                  {/* Message body */}
+                  <p className="text-slate-300 text-sm italic mb-2 leading-relaxed border-l-2 border-slate-800 pl-4 py-1">
                     "{item.message}"
                   </p>
-                  <div className="text-slate-550 text-xs text-slate-500">
+                  {/* Timestamp */}
+                  <div className="text-slate-500 text-xs pt-1">
                     Submitted on: {new Date(item.createdAt).toLocaleString()}
                   </div>
                 </div>

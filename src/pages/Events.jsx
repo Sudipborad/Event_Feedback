@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import EventCard from '../components/EventCard';
 
 export const sampleEvents = [
@@ -32,31 +32,61 @@ export const sampleEvents = [
 ];
 
 export default function Events() {
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const categories = ['All', 'Technology', 'Design', 'Business'];
+
+  const filteredEvents = selectedCategory === 'All'
+    ? sampleEvents
+    : sampleEvents.filter(event => event.category === selectedCategory);
+
   return (
     <div className="bg-slate-950 text-slate-100 min-h-[calc(100vh-4rem)] py-12 px-6 sm:px-8 lg:px-12">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-12">
           <h1 className="text-3xl font-extrabold sm:text-5xl text-white tracking-tight">
             Featured{' '}
             <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
               Events
             </span>
           </h1>
-          <p className="mt-4 text-slate-400 text-lg">
+          <p className="mt-4 text-slate-400 text-sm sm:text-base">
             Discover premier conferences, workshops, and panels. Select an event to share your experiences and help us improve future gatherings.
           </p>
         </div>
 
-        {/* Grid layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {sampleEvents.map((event) => (
-            <EventCard
-              key={event.id}
-              {...event}
-            />
+        {/* Category Filters */}
+        <div className="flex justify-center space-x-2 mb-10 overflow-x-auto pb-2">
+          {categories.map((category) => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-full border transition-all duration-200 ${
+                selectedCategory === category
+                  ? 'bg-violet-600 border-violet-500 text-white shadow-md shadow-violet-500/20'
+                  : 'bg-slate-900/40 border-slate-800 text-slate-450 hover:bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              {category}
+            </button>
           ))}
         </div>
+
+        {/* Grid layout */}
+        {filteredEvents.length === 0 ? (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400 text-sm max-w-md mx-auto">
+            No events found in this category.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                {...event}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
