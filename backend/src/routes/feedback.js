@@ -1,42 +1,18 @@
-import Feedback from '../models/Feedback.js';
+import { createFeedback, updateFeedback, deleteFeedback, getEventFeedbacks, getMyFeedbacks } from '../controllers/feedbackController.js';
+import { verifyJWT, verifyAdmin } from '../middlewares/auth.js';
 
 /**
- * Feedback Route Handler
- * Interacts with MongoDB database using Mongoose model.
+ * Feedback routes plugin
  */
 export default async function feedbackRoutes(fastify, options) {
-  // GET /api/feedback - Retrieve all feedbacks from MongoDB
-  fastify.get('/feedback', async (request, reply) => {
-    try {
-      const list = await Feedback.find().sort({ createdAt: -1 });
-      return list;
-    } catch (err) {
-      fastify.log.error(err);
-      reply.status(500);
-      return { error: 'Failed to retrieve feedback data' };
-    }
-  });
+  // Public submission of feedback (optional auth handled in controller)
+  fastify.post('/feedback', createFeedback);
 
-  // POST /api/feedback - Save feedback to MongoDB
-  fastify.post('/feedback', async (request, reply) => {
-    try {
-      const { name, email, eventName, message } = request.body || {};
-      
-      const feedbackItem = new Feedback({
-        name,
-        email,
-        eventName,
-        message,
-      });
+  // Authenticated User reviews management (requires verifyJWT)
+  fastify.put('/feedback/:id', { preHandler: [verifyJWT] }, updateFeedback);
+  fastify.delete('/feedback/:id', { preHandler: [verifyJWT] }, deleteFeedback);
+  fastify.get('/feedback/my', { preHandler: [verifyJWT] }, getMyFeedbacks);
 
-      const savedFeedback = await feedbackItem.save();
-      
-      reply.status(201);
-      return savedFeedback;
-    } catch (err) {
-      fastify.log.error(err);
-      reply.status(500);
-      return { error: 'Failed to save feedback data' };
-    }
-  });
+  // Admin event-specific feedback inspections (requires Admin role)
+  fastify.get('/events/:eventId/feedback', { preHandler: [verifyJWT, verifyAdmin] }, getEventFeedbacks);
 }

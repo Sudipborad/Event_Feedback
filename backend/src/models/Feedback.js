@@ -2,20 +2,29 @@ import mongoose from 'mongoose';
 
 /**
  * Feedback Mongoose Schema
- * Represents the structure of feedback items stored in MongoDB.
  */
 const feedbackSchema = new mongoose.Schema({
-  name: {
-    type: String,
+  eventId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Event',
     required: true,
   },
-  email: {
-    type: String,
-    required: true,
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false,
   },
-  eventName: {
+  guestName: {
     type: String,
+  },
+  guestEmail: {
+    type: String,
+  },
+  rating: {
+    type: Number,
     required: true,
+    min: 1,
+    max: 5,
   },
   message: {
     type: String,
@@ -27,7 +36,5 @@ const feedbackSchema = new mongoose.Schema({
   },
 });
 
-// Compile and export model
 const Feedback = mongoose.model('Feedback', feedbackSchema);
-
 export default Feedback;

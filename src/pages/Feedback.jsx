@@ -1,413 +1,104 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Send, CheckCircle2, AlertTriangle, HelpCircle } from 'lucide-react';
-import { sampleEvents } from './Events';
-import { submitFeedback, getFeedbacks } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { MessageSquare, Calendar, MapPin, Tag, Star, ArrowRight } from 'lucide-react';
+import { getEvents } from '../services/api';
 import SkeletonCard from '../components/Skeleton';
-import Toast from '../components/Toast';
 
 export default function Feedback() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-
-  // State variables for form inputs
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    eventName: '',
-    message: '',
-  });
-
-  // State variables for feedback listing
-  const [feedbacks, setFeedbacks] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
-  const [submitError, setSubmitError] = useState(null);
 
-  // State variables for validation and submission
-  const [errors, setErrors] = useState({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  // State variable for Toast notification
-  const [toast, setToast] = useState(null);
-
-  // Load feedbacks list from backend on mount
   useEffect(() => {
-    loadFeedbacksList();
+    loadEvents();
   }, []);
 
-  const loadFeedbacksList = async () => {
+  const loadEvents = async () => {
     try {
       setLoading(true);
-      setFetchError(null);
-      const data = await getFeedbacks();
-      setFeedbacks(data);
+      const data = await getEvents();
+      setEvents(data);
     } catch (err) {
-      console.error('Failed to load feedbacks:', err);
-      setFetchError('Failed to load recent feedback submissions. Please check if the backend server is running.');
-      setToast({ message: 'Error fetching recent feedback from database.', type: 'error' });
+      console.error('Failed to load events for feedback gateway:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Set initial event from URL parameters if available
-  useEffect(() => {
-    const eventParam = searchParams.get('event');
-    if (eventParam) {
-      setFormData((prev) => ({ ...prev, eventName: eventParam }));
-    }
-  }, [searchParams]);
-
-  // Handle inputs change
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear field-specific error as user types
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  // Get initials for profile badge icon
-  const getInitials = (name) => {
-    if (!name) return '??';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
-
-  // Validate form data
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = 'Name is required';
-    
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    if (!formData.eventName) newErrors.eventName = 'Please select an event';
-    
-    if (!formData.message.trim()) {
-      newErrors.message = 'Feedback message is required';
-    } else if (formData.message.trim().length < 10) {
-      newErrors.message = 'Message must be at least 10 characters long';
-    }
-
-    return newErrors;
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitError(null);
-    const validationErrors = validateForm();
-    
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      setToast({ message: 'Please fix form validation errors.', type: 'error' });
-      return;
-    }
-
-    setSubmitting(true);
-    
-    try {
-      // Connect Frontend with Backend API using Axios
-      await submitFeedback(formData);
-      setIsSubmitted(true);
-      setToast({ message: 'Feedback successfully submitted to database!', type: 'success' });
-      // Reload feedbacks list to include new item
-      loadFeedbacksList();
-    } catch (err) {
-      console.error('Submission failed:', err);
-      setSubmitError('Failed to submit feedback. Please ensure the backend server is running and try again.');
-      setToast({ message: 'Database submission failed.', type: 'error' });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Reset form to submit again
-  const handleReset = () => {
-    setFormData({
-      name: '',
-      email: '',
-      eventName: '',
-      message: '',
-    });
-    setIsSubmitted(false);
-    setErrors({});
-    setSubmitError(null);
-  };
-
-  if (isSubmitted) {
-    return (
-      <div className="bg-slate-950 text-slate-100 min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-6 sm:px-8">
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(null)}
-          />
-        )}
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center shadow-xl shadow-violet-500/5">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-6">
-            <CheckCircle2 className="h-10 w-10" />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Feedback Submitted!</h2>
-          <p className="text-slate-400 text-sm mb-6">
-            Thank you, <span className="text-white font-medium">{formData.name}</span>. Your response for <span className="text-violet-400 font-medium">{formData.eventName}</span> has been saved to the database.
-          </p>
-
-          <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 text-left space-y-2 mb-8 text-sm">
-            <div>
-              <span className="text-slate-500 font-medium block">Name</span>
-              <span className="text-slate-200 font-semibold">{formData.name}</span>
-            </div>
-            <div>
-              <span className="text-slate-500 font-medium block">Email</span>
-              <span className="text-slate-200">{formData.email}</span>
-            </div>
-            <div>
-              <span className="text-slate-500 font-medium block">Feedback Message</span>
-              <p className="text-slate-350 italic">"{formData.message}"</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={handleReset}
-              className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all duration-200"
-            >
-              Submit Another Response
-            </button>
-            <button
-              onClick={() => navigate('/')}
-              className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition-all duration-200"
-            >
-              Back to Home
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-slate-950 text-slate-100 min-h-[calc(100vh-4rem)] py-12 px-6 sm:px-8 lg:px-12">
-      {/* Toast Alert */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
-
-      <div className="max-w-2xl mx-auto w-full">
+      <div className="max-w-5xl mx-auto space-y-10">
+        
         {/* Header */}
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-extrabold sm:text-4xl text-white tracking-tight">
-            Share Your{' '}
+        <div className="text-center max-w-3xl mx-auto space-y-4">
+          <h1 className="text-3xl font-extrabold sm:text-5xl text-white tracking-tight">
+            Select an{' '}
             <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
-              Feedback
+              Event
             </span>
           </h1>
-          <p className="mt-3 text-slate-400 text-sm sm:text-base">
-            Your opinion matters to us. Please fill out the form below to let us know how we can make our events better.
+          <p className="text-slate-400 text-sm sm:text-base">
+            Choose an event below to submit your star rating and detailed participant reviews.
           </p>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-10 shadow-lg backdrop-blur-sm">
-          {submitError && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl flex items-center space-x-2 text-sm mb-6">
-              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-              <span>{submitError}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-slate-300 mb-2">
-                Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Enter your name"
-                className={`w-full bg-slate-950/60 border ${
-                  errors.name ? 'border-red-500/80 focus:ring-red-500/20' : 'border-slate-800 focus:border-violet-500 focus:ring-violet-500/20'
-                } rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-205 transition-colors`}
-              />
-              {errors.name && (
-                <p className="mt-1.5 text-xs text-red-400 flex items-center space-x-1">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  <span>{errors.name}</span>
-                </p>
-              )}
-            </div>
-
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-slate-300 mb-2">
-                Email Address
-              </label>
-              <input
-                type="text"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="you@example.com"
-                className={`w-full bg-slate-950/60 border ${
-                  errors.email ? 'border-red-500/80 focus:ring-red-500/20' : 'border-slate-800 focus:border-violet-500 focus:ring-violet-500/20'
-                } rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-205 transition-colors`}
-              />
-              {errors.email && (
-                <p className="mt-1.5 text-xs text-red-400 flex items-center space-x-1">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  <span>{errors.email}</span>
-                </p>
-              )}
-            </div>
-
-            {/* Event Selection */}
-            <div>
-              <label htmlFor="eventName" className="block text-sm font-semibold text-slate-300 mb-2">
-                Event Name
-              </label>
-              <select
-                id="eventName"
-                name="eventName"
-                value={formData.eventName}
-                onChange={handleChange}
-                className={`w-full bg-slate-950/60 border ${
-                  errors.eventName ? 'border-red-500/80 focus:ring-red-500/20' : 'border-slate-800 focus:border-violet-500 focus:ring-violet-500/20'
-                } rounded-xl px-4 py-3 focus:outline-none focus:ring-4 transition-all duration-205 transition-colors ${
-                  !formData.eventName ? 'text-slate-500' : 'text-slate-100'
-                }`}
+        {/* List / Grid of events to leave feedback */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : events.length === 0 ? (
+          <div className="bg-slate-900 border border-slate-850 rounded-2xl p-12 text-center text-slate-400 text-sm max-w-md mx-auto space-y-4">
+            <p className="font-semibold text-white text-base">No active events found</p>
+            <p className="text-xs">Events must be created first before collecting user feedback.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {events.map((event) => (
+              <div 
+                key={event._id}
+                className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 hover:border-violet-500/30 transition-all flex flex-col justify-between space-y-6"
               >
-                <option value="" disabled>Select an event</option>
-                {sampleEvents.map((event) => (
-                  <option key={event.id} value={event.title} className="bg-slate-900 text-slate-100">
-                    {event.title}
-                  </option>
-                ))}
-                <option value="General Feedback / Other" className="bg-slate-900 text-slate-100">General Feedback / Other</option>
-              </select>
-              {errors.eventName && (
-                <p className="mt-1.5 text-xs text-red-400 flex items-center space-x-1">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  <span>{errors.eventName}</span>
-                </p>
-              )}
-            </div>
-
-            {/* Feedback Message */}
-            <div>
-              <label htmlFor="message" className="block text-sm font-semibold text-slate-300 mb-2">
-                Feedback Message
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                rows="4"
-                placeholder="What did you like? What can we improve?"
-                className={`w-full bg-slate-950/60 border ${
-                  errors.message ? 'border-red-500/80 focus:ring-red-500/20' : 'border-slate-800 focus:border-violet-500 focus:ring-violet-500/20'
-                } rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 transition-all duration-205 transition-colors resize-none`}
-              />
-              {errors.message && (
-                <p className="mt-1.5 text-xs text-red-400 flex items-center space-x-1">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  <span>{errors.message}</span>
-                </p>
-              )}
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3.5 px-4 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-850/50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg shadow-violet-500/20 transition-all duration-200 flex items-center justify-center space-x-2 border border-violet-500"
-            >
-              <Send className="h-4.5 w-4.5" />
-              <span>{submitting ? 'Submitting...' : 'Submit Feedback'}</span>
-            </button>
-          </form>
-        </div>
-
-        {/* Feedback List Section */}
-        <div className="mt-16 border-t border-slate-800/80 pt-12">
-          <h2 className="text-2xl font-bold text-white mb-6 tracking-tight text-center md:text-left">
-            Recent Feedback Submissions
-          </h2>
-
-          {fetchError && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl flex items-center space-x-2 text-sm">
-              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-              <span>{fetchError}</span>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="space-y-4">
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
-            </div>
-          ) : feedbacks.length === 0 ? (
-            <div className="bg-slate-900/40 border border-slate-850 rounded-2xl p-10 text-center text-slate-400 text-sm flex flex-col items-center space-y-3">
-              <HelpCircle className="h-10 w-10 text-slate-500 animate-pulse" />
-              <span className="font-medium">No feedback submissions recorded yet.</span>
-              <span className="text-xs text-slate-500">Be the first to share your thoughts using the form above!</span>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {feedbacks.map((item) => (
-                <div
-                  key={item._id}
-                  className="bg-slate-900/40 border border-slate-800 p-6 rounded-xl hover:border-violet-500/30 hover:shadow-lg hover:shadow-violet-500/2 transition-all duration-300"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-                    <div className="flex items-center space-x-3">
-                      {/* Avatar Badge Icon with Initials */}
-                      <div className="h-10 w-10 rounded-full bg-violet-650/10 border border-violet-500/30 text-violet-300 flex items-center justify-center font-bold text-sm select-none">
-                        {getInitials(item.name)}
-                      </div>
-                      <div>
-                        <span className="font-bold text-white text-base block">{item.name}</span>
-                        <span className="text-slate-500 text-xs">{item.email}</span>
-                      </div>
-                    </div>
-                    {/* Event Tag */}
-                    <span className="inline-block self-start sm:self-auto bg-violet-600/15 border border-violet-500/30 text-violet-300 text-xs px-2.5 py-1 rounded-full font-medium shadow-sm">
-                      {item.eventName}
+                <div className="space-y-3">
+                  <span className="bg-violet-600/10 border border-violet-500/20 text-violet-300 text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider inline-block">
+                    {event.category}
+                  </span>
+                  
+                  <h3 className="text-xl font-bold text-white line-clamp-1">{event.title}</h3>
+                  
+                  <div className="flex items-center space-x-4 text-xs text-slate-400">
+                    <span className="flex items-center space-x-1">
+                      <Calendar className="h-3.5 w-3.5 text-violet-450" />
+                      <span>{new Date(event.date).toLocaleDateString()}</span>
+                    </span>
+                    <span className="flex items-center space-x-1">
+                      <MapPin className="h-3.5 w-3.5 text-violet-450" />
+                      <span>{event.venue}</span>
                     </span>
                   </div>
-                  {/* Message body */}
-                  <p className="text-slate-300 text-sm italic mb-2 leading-relaxed border-l-2 border-slate-800 pl-4 py-1">
-                    "{item.message}"
-                  </p>
-                  {/* Timestamp */}
-                  <div className="text-slate-500 text-xs pt-1">
-                    Submitted on: {new Date(item.createdAt).toLocaleString()}
-                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+
+                <div className="flex justify-between items-center pt-2 border-t border-slate-850">
+                  <div className="flex items-center space-x-1">
+                    <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
+                    <span className="text-sm font-semibold text-white">{event.averageRating || '0.0'}</span>
+                    <span className="text-slate-500 text-xs">({event.feedbackCount || 0} reviews)</span>
+                  </div>
+
+                  <button
+                    onClick={() => navigate(`/events/${event._id}`)}
+                    className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-xl transition-all flex items-center space-x-1 border border-violet-500"
+                  >
+                    <span>Leave Feedback</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
       </div>
     </div>
   );
